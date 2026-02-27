@@ -3,11 +3,18 @@ import requests
 import json
 import os
 
-# 配置 API Keys
-OPENAI_API_KEY = "你的_OPENAI_API_KEY"
-SERPER_API_KEY = "你的_SERPER_API_KEY"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
+if not OPENAI_API_KEY:
+    raise ValueError("Missing environment variable: OPENAI_API_KEY")
+if not SERPER_API_KEY:
+    raise ValueError("Missing environment variable: SERPER_API_KEY")
+
+client = openai.OpenAI(
+    base_url="https://right.codes/codex/v1",
+    api_key=OPENAI_API_KEY
+)
 
 # --- 1. 定义 Serper 搜索函数 ---
 def search_serper(query):
@@ -48,7 +55,7 @@ def chat_with_agent(prompt):
     
     # 第一次对话：把用户意图和工具描述发给 GPT-4
     response = client.chat.completions.create(
-        model="gpt-4o", # 或 gpt-4
+        model="gpt-5.2", # 或 gpt-4
         messages=messages,
         tools=tools,
         tool_choice="auto",
@@ -59,6 +66,7 @@ def chat_with_agent(prompt):
 
     # 检查 GPT-4 是否决定调用工具
     if tool_calls:
+        print("Agent 调用 Serper 服务...")
         # 获取工具名称和参数
         tool_call = tool_calls[0]
         function_name = tool_call.function.name
@@ -81,7 +89,7 @@ def chat_with_agent(prompt):
             
             # 第二次对话：GPT-4 根据搜索结果生成最终回答
             final_response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-5.2",
                 messages=messages,
             )
             return final_response.choices[0].message.content
@@ -89,7 +97,7 @@ def chat_with_agent(prompt):
     return response_message.content
 
 # --- 4. 运行示例 ---
-user_question = "英伟达现在的股价是多少？"
+user_question = "告诉我2026年2月27日英伟达股价的日k变化趋势，并且对此进行分析"
 answer = chat_with_agent(user_question)
 print("-" * 20)
 print(f"🤖 Agent回答: {answer}")

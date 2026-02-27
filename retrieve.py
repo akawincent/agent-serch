@@ -1,8 +1,12 @@
 import requests
 import json
+import os
 
 def search_internet(query):
     url = "https://google.serper.dev/search"
+    api_key = os.getenv("SERPER_API_KEY")
+    if not api_key:
+        raise ValueError("Missing environment variable: SERPER_API_KEY")
 
     payload = json.dumps({
         "q": query,           
@@ -11,7 +15,7 @@ def search_internet(query):
     })
 
     headers = {
-        'X-API-KEY': 'e26ef1d0c0b56a5f4b9b17de22cec18cee558123', # 🚨 请替换为你的实际 KEY
+        'X-API-KEY': api_key,
         'Content-Type': 'application/json'
     }
 
@@ -20,7 +24,7 @@ def search_internet(query):
     
     return results
 
-query = "2027年春节是哪一天"
+query = "今年的放假安排"
 search_results = search_internet(query)
 
 # print 
