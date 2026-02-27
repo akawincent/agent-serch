@@ -16,7 +16,7 @@ client = openai.OpenAI(
     api_key=OPENAI_API_KEY
 )
 
-# --- 1. 定义 Serper 搜索函数 ---
+## Call serper service
 def search_serper(query):
     print(f"📡 正在搜索: {query}...")
     url = "https://google.serper.dev/search"
@@ -26,9 +26,10 @@ def search_serper(query):
         'Content-Type': 'application/json'
     }
     response = requests.request("POST", url, headers=headers, data=payload)
+    response.raise_for_status()
     return response.text
 
-# --- 2. 定义工具描述 (让 GPT-4 知道如何使用这个函数) ---
+# Tool for agent
 tools = [
     {
         "type": "function",
@@ -49,55 +50,73 @@ tools = [
     }
 ]
 
-# --- 3. 模拟对话循环 ---
-def chat_with_agent(prompt):
+# Chat with agent
+def chat_with_agent(prompt, max_rounds=8):
     messages = [{"role": "user", "content": prompt}]
-    
-    # 第一次对话：把用户意图和工具描述发给 GPT-4
-    response = client.chat.completions.create(
-        model="gpt-5.2", # 或 gpt-4
-        messages=messages,
-        tools=tools,
-        tool_choice="auto",
-    )
-    
-    response_message = response.choices[0].message
-    tool_calls = response_message.tool_calls
 
-    # 检查 GPT-4 是否决定调用工具
-    if tool_calls:
-        print("Agent 调用 Serper 服务...")
-        # 获取工具名称和参数
-        tool_call = tool_calls[0]
-        function_name = tool_call.function.name
-        function_args = json.loads(tool_call.function.arguments)
-        
-        # 执行实际的搜索函数
-        if function_name == "search_serper":
-            search_result = search_serper(function_args.get("query"))
-            
-            # 将搜索结果加入消息列表，再次发给 GPT-4
-            messages.append(response_message)
+    for round_index in range(max_rounds):
+        response = client.chat.completions.create(
+            model="gpt-5.2",
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",
+        )
+        response_message = response.choices[0].message
+        tool_calls = response_message.tool_calls or []
+
+        if not tool_calls:
+            return response_message.content or ""
+
+        print(f"Agent 第 {round_index + 1} 轮触发工具调用...")
+        messages.append(
+            {
+                "role": "assistant",
+                "content": response_message.content,
+                "tool_calls": [
+                    {
+                        "id": tool_call.id,
+                        "type": "function",
+                        "function": {
+                            "name": tool_call.function.name,
+                            "arguments": tool_call.function.arguments,
+                        },
+                    }
+                    for tool_call in tool_calls
+                ],
+            }
+        )
+
+        for tool_call in tool_calls:
+            function_name = tool_call.function.name
+            tool_result = ""
+
+            if function_name == "search_serper":
+                try:
+                    function_args = json.loads(tool_call.function.arguments or "{}")
+                    query = function_args.get("query", "")
+                    tool_result = search_serper(query) if query else "Error: missing query"
+                except Exception as err:
+                    tool_result = f"Error calling search_serper: {err}"
+            else:
+                tool_result = f"Error: unknown tool '{function_name}'"
+
             messages.append(
                 {
                     "tool_call_id": tool_call.id,
                     "role": "tool",
                     "name": function_name,
-                    "content": search_result,
+                    "content": tool_result,
                 }
             )
-            
-            # 第二次对话：GPT-4 根据搜索结果生成最终回答
-            final_response = client.chat.completions.create(
-                model="gpt-5.2",
-                messages=messages,
-            )
-            return final_response.choices[0].message.content
-            
-    return response_message.content
 
-# --- 4. 运行示例 ---
-user_question = "告诉我2026年2月27日英伟达股价的日k变化趋势，并且对此进行分析"
+    return f"Reached max rounds ({max_rounds}) without a final answer."
+
+user_question = "参考东方财富网，同花顺，新浪财经等网站，分析a股沪电股份 \
+                2026年2月27日的日k趋势以及这一周的周k趋势，向我整理汇报这只股票的行情。 \
+                我的交易策略是波段交易，我已持有300股，成本为20859元，我能接受的最大回撤率是30%，\
+                接下来，对下一周两天内的趋势做出预测，给我忠实可靠的投资意见。"
 answer = chat_with_agent(user_question)
-print("-" * 20)
+print("\n")
+print("-" * 80)
+print("\n")
 print(f"🤖 Agent回答: {answer}")
