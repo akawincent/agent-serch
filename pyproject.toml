@@ -1,7 +1,12 @@
 [project]
-name = "serper-test"
+name = "agent-search"
 version = "0.1.0"
-description = "Add your description here"
+authors = [
+    {name = "akawincent"},
+    {name = "oz-agent"}
+]
+description = "Agent based on LLM and Serper for internet search"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "openai>=2.24.0",
