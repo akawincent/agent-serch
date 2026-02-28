@@ -12,3 +12,5 @@ uv.lock
 
 # Generated outputs
 results/
+data/
+.pytest_cache/
