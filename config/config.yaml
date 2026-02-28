@@ -1,0 +1,26 @@
+timezone: Asia/Shanghai
+universe_file: config/watchlist.csv
+results_dir: results
+schedule:
+  pre_open: "09:05"
+  intraday_every_minutes: 30
+  post_close: "15:10"
+risk:
+  max_drawdown_limit: 0.15
+  risk_per_trade: 0.01
+  atr_stop_multiple: 1.5
+signal:
+  technical_weight: 0.7
+  news_weight: 0.3
+  buy_threshold: 4
+  reduce_threshold: 1
+integrations:
+  serper_api_key_env: SERPER_API_KEY
+  openai_api_key_env: OPENAI_API_KEY
+  wecom_webhook_env: WECOM_WEBHOOK_URL
+storage:
+  db_path: data/agent_search.db
+llm:
+  base_url: https://right.codes/codex/v1
+  model: gpt-5.2
+  max_rounds: 10
